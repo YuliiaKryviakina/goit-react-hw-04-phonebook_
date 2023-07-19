@@ -1,36 +1,28 @@
-import React, { Component } from "react";
+import React, { useEffect, useState } from "react";
 import { nanoid } from "nanoid";
 import { ContactForm } from "./ContactForm/ContactForm";
 import { Filter } from "./Filter/Filter";
 import { ContactList } from "./ContactList/ContactList";
 import propTypes from "prop-types";
 
-export class App extends Component {
-  state = {
-    contacts: [
-      { id: "id-1", name: "Rosie Simpson", number: "459-12-56" },
-      { id: "id-2", name: "Hermione Kline", number: "443-89-12" },
-      { id: "id-3", name: "Eden Clements", number: "645-17-79" },
-      { id: "id-4", name: "Annie Copeland", number: "227-91-26" },
-    ],
-    filter: "",
+const localStorageKey = "contactList";
+
+export const App = () => {
+  const [contacts, setContacts] = useState(() => {
+    return JSON.parse(window.localStorage.getItem(localStorageKey)) ?? [];
+  });
+  const [filter, setFilter] = useState("");
+
+  const handleChange = (e) => {
+    setFilter(e.target.value);
   };
 
-  handleChange = (e) => {
-    this.setState({ filter: e.target.value });
+  const handleDelete = (contactId) => {
+    setContacts((state) => state.filter((contact) => contact.id !== contactId));
   };
 
-  handleDelete = (contactId) => {
-    this.setState((prevState) => ({
-      contacts: prevState.contacts.filter(
-        (contact) => contact.id !== contactId
-      ),
-    }));
-  };
-
-  handleSubmit = ({ name, number }) => {
-    const { contacts } = this.state;
-    const isExistingContact = contacts.some(
+  const handleSubmit = ({ name, number }) => {
+    const isExistingContact = contacts.find(
       (contact) => contact.name.toLowerCase() === name.toLowerCase()
     );
 
@@ -39,59 +31,55 @@ export class App extends Component {
       return;
     }
 
-    return this.setState((prevState) => ({
-      contacts: [...prevState.contacts, { name, number, id: nanoid() }],
-    }));
+    setContacts((state) => [
+      ...state,
+      { name: name, number: number, id: nanoid() },
+    ]);
+    return;
   };
 
-  getFiltered = () => {
-    const { contacts, filter } = this.state;
-    const filterContactsList = contacts.filter((contact) => {
-      return contact.name.toLowerCase().includes(filter.toLowerCase());
+  const getFiltered = () => {
+    const filterContactsList = contacts.filter(({ name }) => {
+      return name.toLowerCase().includes(filter.toLowerCase());
     });
     return filterContactsList;
   };
 
-  componentDidMount() {
-    const savedContacts = localStorage.getItem(this.localStorage);
+  useEffect(() => {
+    const savedContacts = localStorage.getItem(localStorageKey);
     if (savedContacts) {
-      this.setState({ contacts: JSON.parse(savedContacts) });
+      setContacts(JSON.parse(savedContacts));
     }
-  }
+  }, []);
 
-  componentDidUpdate(prevState) {
-    const { contacts } = this.state;
-    if (prevState.contacts !== contacts) {
-      localStorage.setItem(this.localStorage, JSON.stringify(contacts));
-    }
-  }
+  useEffect(() => {
+    localStorage.setItem(localStorageKey, JSON.stringify(contacts));
+  }, [contacts]);
 
-  render() {
-    const filterContactsList = this.getFiltered();
-    return (
-      <div
-        style={{
-          height: "100vh",
-          display: "flex",
-          flexDirection: "column",
-          justifyContent: "center",
-          alignItems: "center",
-          fontSize: 20,
-          color: "#010101",
-        }}
-      >
-        <h1>Phonebook</h1>
-        <ContactForm onSubmit={this.handleSubmit} />
-        <h2> Contacts</h2>
-        <Filter value={this.state.filter} handleChange={this.handleChange} />
-        <ContactList
-          contacts={filterContactsList}
-          onHandleDelete={this.handleDelete}
-        />
-      </div>
-    );
-  }
-}
+  const filterContactsList = getFiltered();
+  return (
+    <div
+      style={{
+        height: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        fontSize: 20,
+        color: "#010101",
+      }}
+    >
+      <h1>Phonebook</h1>
+      <ContactForm onSubmit={handleSubmit} />
+      <h2> Contacts</h2>
+      <Filter value={filter} handleChange={handleChange} />
+      <ContactList
+        contacts={filterContactsList}
+        onHandleDelete={handleDelete}
+      />
+    </div>
+  );
+};
 
 App.propTypes = {
   contacts: propTypes.arrayOf(
